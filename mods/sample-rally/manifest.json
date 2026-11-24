@@ -3,7 +3,31 @@
   "id": "sample-rally",
   "name": "Sample Rally Pack",
   "version": "1.0.0",
-  "description": "A compact, quick-handling rally bike made with the built-in procedural vehicle visuals.",
+  "description": "A compact, quick-handling rally bike plus two scripted missions that appear wherever matching OSM places exist.",
+  "missions": [
+    {
+      "id": "cafe-sprint",
+      "kind": "time-trial",
+      "title": "Rally cafe sprint",
+      "rewardCents": 900,
+      "timeMultiplier": 1,
+      "placeCategories": ["restaurant", "shop"],
+      "rules": {
+        "rewardMultiplier": "(if (> (distance) 2500) 1.5 1)"
+      }
+    },
+    {
+      "id": "park-loop",
+      "kind": "checkpoint-race",
+      "title": "Rally park loop",
+      "rewardCents": 1200,
+      "timeMultiplier": 1.2,
+      "placeCategories": ["park"],
+      "rules": {
+        "timeLimitMultiplier": "(if (< (distance) 1200) 1.25 1)"
+      }
+    }
+  ],
   "vehicles": [
     {
       "id": "mod-sample-rally-bike",
