@@ -7,6 +7,6 @@ export default defineConfig({
   target: 'node22',
   outDir: 'dist',
   clean: true,
-  noExternal: ['@openstreet-racer/shared', '@openstreet-racer/vehicle', '@openstreet-racer/world'],
+  noExternal: ['@openstreet-racer/shared', '@openstreet-racer/vehicle', '@openstreet-racer/world', '@openstreet-racer/game'],
   external: ['ws'],
 });
