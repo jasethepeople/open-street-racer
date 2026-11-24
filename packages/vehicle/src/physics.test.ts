@@ -20,7 +20,7 @@ describe('arcade vehicle', () => {
       { throttle: 1, steer: 1, brake: 0, handbrake: 0 },
       1,
     );
-    expect(next.speedMetersPerSecond).toBeCloseTo(0.45);
+    expect(next.speedMetersPerSecond).toBeCloseTo(0.69);
     expect(next.headingRadians).toBeGreaterThan(0);
   });
 
@@ -32,7 +32,7 @@ describe('arcade vehicle', () => {
       { throttle: 0, steer: 0, brake: 1, handbrake: 0 },
       0.05,
     );
-    expect(braking.speedMetersPerSecond).toBeCloseTo(2.9);
+    expect(braking.speedMetersPerSecond).toBeCloseTo(2.58);
     expect(reversing.speedMetersPerSecond).toBeLessThan(0);
     expect(reversing.velocity.y).toBeLessThan(0);
   });

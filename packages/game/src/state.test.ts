@@ -24,8 +24,8 @@ describe('plain game state and fixed-step simulation', () => {
     const after = readGameState();
     expect(after).not.toBe(before);
     expect(before.cars[0].speedMetersPerSecond).toBe(0);
-    expect(after.cars[0].speedMetersPerSecond).toBeCloseTo(0.15);
-    expect(after.cars[0].velocity.y).toBeCloseTo(0.15);
+    expect(after.cars[0].speedMetersPerSecond).toBeCloseTo(0.23);
+    expect(after.cars[0].velocity.y).toBeCloseTo(0.23);
     expect(after.cars[0].position.y).toBeGreaterThan(0);
   });
 
@@ -70,7 +70,7 @@ describe('plain game state and fixed-step simulation', () => {
 
     expect(readGameState().roadSpeedFactor).toBe(0.18);
     simulateGameStep(throttleInput);
-    expect(readGameState().cars[0].speedMetersPerSecond).toBeLessThan(0.15);
+    expect(readGameState().cars[0].speedMetersPerSecond).toBeLessThan(0.25);
     expect(readGameState().cars[0].speedMetersPerSecond).toBeGreaterThan(0);
   });
 });

@@ -87,7 +87,7 @@ export function stepVehicle(
   const turnRate =
     steering *
     vehicle.handling.steeringRadians *
-    (0.25 + speedRatio) *
+    (0.6 + speedRatio) *
     Math.sign(speed || 1) *
     (1 - (state.damage ?? 0) * 0.0025);
   const headingRadians = wrapRadians(state.headingRadians + turnRate * delta);
