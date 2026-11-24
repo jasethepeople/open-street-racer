@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "sample-rally",
+  "name": "Sample Rally Pack",
+  "version": "1.0.0",
+  "description": "A compact, quick-handling rally bike made with the built-in procedural vehicle visuals.",
+  "vehicles": [
+    {
+      "id": "mod-sample-rally-bike",
+      "name": "Sample Rally Bike",
+      "category": "Community mod",
+      "costCents": 500,
+      "visual": "motorbike",
+      "dimensions": {
+        "width": 0.95,
+        "length": 2.3,
+        "height": 1.35,
+        "wheelbase": 1.48,
+        "track": 0.56,
+        "wheelRadius": 0.36
+      },
+      "handling": {
+        "massKg": 210,
+        "engineForce": 1800,
+        "brakeForce": 1200,
+        "maxSpeedMps": 42,
+        "maxReverseMps": 3,
+        "steeringRadians": 0.62,
+        "grip": 5.4,
+        "suspensionStiffness": 34
+      }
+    }
+  ]
+}
