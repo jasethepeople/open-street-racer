@@ -1,13 +1,15 @@
 import type {
   ActiveMission,
   LeaderboardSnapshot,
+  LonLat,
   MissionOffer,
   PlayerProfile,
 } from '@openstreet-racer/shared';
+import { haversineMeters } from '@openstreet-racer/world';
 import { getVehicleCatalog } from '@openstreet-racer/vehicle/catalog';
 import type { GameSettings } from './progress-store';
 
-export type MenuTab = 'missions' | 'garage' | 'leaderboards' | 'settings';
+export type MenuTab = 'missions' | 'build' | 'garage' | 'leaderboards' | 'settings';
 
 export interface GameMenuCallbacks {
   readonly requestMissions: () => void;
@@ -15,7 +17,8 @@ export interface GameMenuCallbacks {
   readonly garageAction: (action: 'buy' | 'select' | 'repair', vehicleId?: string) => void;
   readonly respawn: () => void;
   readonly requestLeaderboard: (raceId?: string) => void;
-  readonly publishRace: (title: string, destination: string) => void;
+  readonly publishRace: (title: string, destination: string, waypoints?: readonly LonLat[]) => void;
+  readonly getCarPosition: () => LonLat | null;
   readonly saveSettings: (settings: GameSettings) => void;
 }
 
@@ -28,6 +31,7 @@ export class GameMenu {
   private currentProfile: PlayerProfile | null = null;
   private leaderboard: LeaderboardSnapshot | null = null;
   private tab: MenuTab = 'missions';
+  private draftCourse: readonly LonLat[] = [];
   private settings: GameSettings;
   private isOpen = false;
   private missionRequestPending = false;
@@ -138,9 +142,87 @@ export class GameMenu {
       : this.t('loadingProfile');
     this.content.replaceChildren();
     if (this.tab === 'missions') this.renderMissions();
+    if (this.tab === 'build') this.renderBuild();
     if (this.tab === 'garage') this.renderGarage();
     if (this.tab === 'leaderboards') this.renderLeaderboards();
     if (this.tab === 'settings') this.renderSettings();
+  }
+
+  private renderBuild(): void {
+    const builder = makeElement('article', 'menu-card race-builder');
+    builder.append(makeElement('strong', '', this.t('buildCourse')));
+    builder.append(makeElement('p', 'menu-muted', this.t('buildIntro')));
+
+    const list = makeElement('ul', 'menu-checkpoint-list');
+    if (this.draftCourse.length === 0) {
+      list.append(makeElement('li', 'menu-muted', this.t('courseEmpty')));
+    } else {
+      this.draftCourse.forEach((point, index) => {
+        const from = index === 0 ? point : this.draftCourse[index - 1]!;
+        const meters = Math.round(haversineMeters(from, point));
+        list.append(makeElement('li', '', `${this.t('coursePoint')} ${index + 1} · ${meters} m`));
+      });
+    }
+    builder.append(list);
+
+    const row = makeElement('div', 'menu-race-form');
+    const drop = makeElement('button', 'menu-button', this.t('dropCheckpoint'));
+    drop.type = 'button';
+    drop.addEventListener('click', () => {
+      const position = this.callbacks.getCarPosition();
+      if (!position) {
+        this.setStatus(this.t('courseNoCar'));
+        return;
+      }
+      const last = this.draftCourse.at(-1);
+      if (last && haversineMeters(last, position) < 100) {
+        this.setStatus(this.t('courseTooClose'));
+        return;
+      }
+      if (this.draftCourse.length >= 5) {
+        this.setStatus(this.t('courseFull'));
+        return;
+      }
+      this.draftCourse = [...this.draftCourse, position];
+      this.setStatus('');
+      this.render();
+    });
+    const removeLast = makeElement('button', 'menu-button', this.t('removeLastCheckpoint'));
+    removeLast.type = 'button';
+    removeLast.disabled = this.draftCourse.length === 0;
+    removeLast.addEventListener('click', () => {
+      this.draftCourse = this.draftCourse.slice(0, -1);
+      this.render();
+    });
+    const clear = makeElement('button', 'menu-button', this.t('clearCourse'));
+    clear.type = 'button';
+    clear.disabled = this.draftCourse.length === 0;
+    clear.addEventListener('click', () => {
+      this.draftCourse = [];
+      this.render();
+    });
+    row.append(drop, removeLast, clear);
+    builder.append(row);
+
+    const form = makeElement('form', 'menu-race-form');
+    const title = makeElement('input', 'menu-select');
+    title.required = true;
+    title.maxLength = 48;
+    title.placeholder = this.t('raceName');
+    title.setAttribute('aria-label', this.t('raceName'));
+    const publish = makeElement('button', 'menu-button', this.t('publishCourse'));
+    publish.type = 'submit';
+    publish.disabled = this.draftCourse.length === 0;
+    form.append(title, publish);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const finish = this.draftCourse.at(-1);
+      if (!finish) return;
+      this.callbacks.publishRace(title.value.trim(), '', [...this.draftCourse]);
+      this.draftCourse = [];
+    });
+    builder.append(form);
+    this.content.append(builder);
   }
 
   private renderMissions(): void {
@@ -398,6 +480,33 @@ export class GameMenu {
     const language = this.settings.language;
     const words: Record<string, readonly [string, string]> = {
       missions: ['Missions', 'Misiones'],
+      build: ['Build', 'Crear'],
+      buildCourse: ['Build a street race', 'Crea una carrera callejera'],
+      buildIntro: [
+        'Drive to a spot and drop a checkpoint. Keep adding points, name the race, and publish it. Your current position is the start, and the last checkpoint is the finish.',
+        'Conduce hasta un punto y deja un control. Añade más puntos, ponle nombre y publícala. Tu posición actual es la salida y el último control es la meta.',
+      ],
+      courseEmpty: [
+        'No checkpoints yet. Drive somewhere and drop the first one.',
+        'Aún no hay controles. Conduce a un sitio y deja el primero.',
+      ],
+      coursePoint: ['Checkpoint', 'Control'],
+      dropCheckpoint: ['Drop checkpoint here', 'Dejar control aquí'],
+      removeLastCheckpoint: ['Remove last', 'Quitar último'],
+      clearCourse: ['Clear course', 'Borrar recorrido'],
+      publishCourse: ['Publish race', 'Publicar carrera'],
+      courseNoCar: [
+        'Drive a little first so the car has a position.',
+        'Conduce un poco primero para que el coche tenga posición.',
+      ],
+      courseTooClose: [
+        'That checkpoint is under 100 m from the last one. Drive farther.',
+        'Ese control está a menos de 100 m del anterior. Conduce más lejos.',
+      ],
+      courseFull: [
+        'A course can have at most 5 checkpoints.',
+        'Un recorrido puede tener como máximo 5 controles.',
+      ],
       garage: ['Garage', 'Garaje'],
       leaderboards: ['Leaderboards', 'Clasificaciones'],
       settings: ['Settings', 'Ajustes'],

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@openstreet-racer/vehicle": "workspace:*",
+    "@openstreet-racer/game": "workspace:*",
     "ws": "8.23.0"
   },
   "devDependencies": {

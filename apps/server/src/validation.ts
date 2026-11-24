@@ -1,5 +1,6 @@
 import {
   MAX_CHAT_CHARACTERS,
+  MAX_RACE_WAYPOINTS,
   MAX_MESSAGE_BYTES,
   MAX_FORWARD_SPEED_MPS,
   MAX_HANDLE_CHARACTERS,
@@ -168,9 +169,30 @@ export function parseClientMessage(text: string): MessageParseResult {
       if (!title || !destination) {
         return failure('INVALID_RACE', 'Race name or destination is invalid.');
       }
+      let waypoints: readonly LonLat[] | undefined;
+      if (parsed.waypoints !== undefined) {
+        if (!Array.isArray(parsed.waypoints)) {
+          return failure('INVALID_RACE', 'Race waypoints must be a list of locations.');
+        }
+        if (parsed.waypoints.length < 1 || parsed.waypoints.length > MAX_RACE_WAYPOINTS) {
+          return failure(
+            'INVALID_RACE',
+            `Races accept 1-${MAX_RACE_WAYPOINTS} checkpoints dropped by the player.`,
+          );
+        }
+        const points: LonLat[] = [];
+        for (const waypoint of parsed.waypoints) {
+          const point = parseLocation(waypoint);
+          if (!point) {
+            return failure('INVALID_RACE', 'Race waypoints must be valid locations.');
+          }
+          points.push(point);
+        }
+        waypoints = points;
+      }
       return {
         ok: true,
-        message: { version: 1, type: 'race-create', title, destination },
+        message: { version: 1, type: 'race-create', title, destination, waypoints },
       };
     }
     default:

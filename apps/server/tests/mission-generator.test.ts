@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { localMetersToLonLat, type OsmElement } from '@openstreet-racer/world';
+import { compileModScript } from '@openstreet-racer/game';
 import { createCommunityRaceOffer, generateMissionOffers } from '../src/mission-generator';
 
 const origin = { longitude: -104.9903, latitude: 39.7392 };
@@ -119,5 +120,65 @@ describe('real-world mission generation', () => {
         { points: [origin, finish], distanceMeters: 9_000, travelTimeSeconds: 600 },
       ),
     ).toBeNull();
+  });
+});
+
+describe('mod missions', () => {
+  it('places mod missions between matching OSM places and applies scripted multipliers', () => {
+    const mods = [
+      {
+        id: 'rally',
+        name: 'Rally Pack',
+        missions: [
+          {
+            id: 'rally-market-dash',
+            kind: 'delivery' as const,
+            title: 'Market dash',
+            rewardCents: 800,
+            timeMultiplier: 1.5,
+            placeCategories: ['shop'],
+            rewardMultiplierScript: compileModScript('(if (> distance 2000) 2 1)'),
+            timeLimitMultiplierScript: null,
+          },
+        ],
+      },
+    ];
+
+    const offers = generateMissionOffers(elements, origin, Date.UTC(2026, 10, 22, 12), mods);
+
+    const modOffer = offers.find((offer) => offer.source === 'mod');
+    expect(modOffer).toBeDefined();
+    expect(modOffer!.id).toMatch(/^mod-rally-market-dash-[0-9a-z]+$/u);
+    expect(modOffer!.title).toBe('Market dash');
+    expect(modOffer!.pickup.category).toBe('shop');
+    expect(modOffer!.rewardCents).toBeGreaterThanOrEqual(400);
+    expect(modOffer!.rewardCents).toBeLessThanOrEqual(1600);
+    expect(modOffer!.timeLimitSeconds).toBeGreaterThan(90);
+    expect(modOffer!.minimumTimeSeconds).toBeGreaterThanOrEqual(10);
+  });
+
+  it('skips mod missions when no matching place category exists nearby', () => {
+    const mods = [
+      {
+        id: 'empty',
+        name: 'Empty Pack',
+        missions: [
+          {
+            id: 'empty-fuel-run',
+            kind: 'taxi' as const,
+            title: 'Fuel run',
+            rewardCents: 500,
+            timeMultiplier: 1,
+            placeCategories: ['fuel station'],
+            rewardMultiplierScript: null,
+            timeLimitMultiplierScript: null,
+          },
+        ],
+      },
+    ];
+
+    const offers = generateMissionOffers(elements, origin, Date.UTC(2026, 10, 22, 12), mods);
+
+    expect(offers.some((offer) => offer.source === 'mod')).toBe(false);
   });
 });

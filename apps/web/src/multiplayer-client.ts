@@ -75,9 +75,15 @@ export class MultiplayerClient {
     if (this.joined) this.send({ version: PROTOCOL_VERSION, type: 'missions-request' });
   }
 
-  publishRace(title: string, destination: LonLat): boolean {
+  publishRace(title: string, destination: LonLat, waypoints?: readonly LonLat[]): boolean {
     if (!this.joined) return false;
-    return this.send({ version: PROTOCOL_VERSION, type: 'race-create', title, destination });
+    return this.send({
+      version: PROTOCOL_VERSION,
+      type: 'race-create',
+      title,
+      destination,
+      ...(waypoints?.length ? { waypoints } : {}),
+    });
   }
 
   sendMissionAction(

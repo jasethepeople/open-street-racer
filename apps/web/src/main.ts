@@ -129,6 +129,11 @@ const gameMenu = new GameMenu(
     respawn: respawnPlayer,
     requestLeaderboard: (raceId) => multiplayer?.requestLeaderboard(raceId),
     publishRace: publishCommunityRace,
+    getCarPosition: () => {
+      const state = readGameState();
+      const car = state.cars[0];
+      return car ? localMetersToLonLat(car.position, state.origin) : null;
+    },
     saveSettings: applySettings,
   },
 );
@@ -490,9 +495,22 @@ function updateMissionProgress(location: LonLat, now: number): void {
   pendingMissionActionUntil = now + 1_500;
 }
 
-function publishCommunityRace(title: string, destinationQuery: string): void {
+function publishCommunityRace(
+  title: string,
+  destinationQuery: string,
+  waypoints?: readonly LonLat[],
+): void {
   if (!multiplayer) {
     gameMenu.setStatus('Connect to the game server before publishing a race.');
+    return;
+  }
+  if (waypoints?.length) {
+    const finish = waypoints.at(-1)!;
+    if (!multiplayer.publishRace(title, finish, waypoints)) {
+      gameMenu.setStatus('Connect to the game server before publishing a race.');
+      return;
+    }
+    gameMenu.setStatus('Planning a road route through your checkpoints…');
     return;
   }
   gameMenu.setStatus('Looking up the race destination…');

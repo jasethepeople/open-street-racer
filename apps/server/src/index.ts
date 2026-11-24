@@ -43,7 +43,7 @@ import { limitTeleportDistance, parseClientMessage, publicPlayer } from './valid
 import { PlayerStore } from './player-store';
 import { createCommunityRaceOffer } from './mission-generator';
 import { CommunityRaceStore } from './community-race-store';
-import { loadVehicleMods } from './mod-loader';
+import { loadMissionMods, loadVehicleMods } from './mod-loader';
 
 const MAX_INVALID_MESSAGES = 3;
 const MAX_SERVER_BUFFERED_BYTES = 256 * 1024;
@@ -1097,6 +1097,11 @@ export function createGameServer(options: GameServerOptions = {}) {
   async function listen(): Promise<{ host: string; port: number }> {
     await loadVehicleMods(resolve(webRoot, 'mods'));
     await loadVehicleMods(resolve(SERVER_DIRECTORY, '../../web/public/mods'));
+    const missionMods = [
+      ...(await loadMissionMods(resolve(webRoot, 'mods'))),
+      ...(await loadMissionMods(resolve(SERVER_DIRECTORY, '../../web/public/mods'))),
+    ];
+    ambientWorld?.setMissionMods?.([...new Map(missionMods.map((mod) => [mod.id, mod])).values()]);
     await new Promise<void>((resolveListen, rejectListen) => {
       httpServer.once('error', rejectListen);
       httpServer.listen(port, host, () => {

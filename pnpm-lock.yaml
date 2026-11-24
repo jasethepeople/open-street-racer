@@ -38,6 +38,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@openstreet-racer/game':
+        specifier: workspace:*
+        version: link:../../packages/game
       '@openstreet-racer/vehicle':
         specifier: workspace:*
         version: link:../../packages/vehicle

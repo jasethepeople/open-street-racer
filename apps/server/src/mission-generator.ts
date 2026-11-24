@@ -14,6 +14,15 @@ import {
   type OsmWayElement,
   type RoadGraph,
 } from '@openstreet-racer/world';
+import type { ModScript } from '@openstreet-racer/game';
+import type { MissionMod } from './mod-loader';
+
+const MAX_MOD_OFFER_COUNT = 4;
+const MIN_MOD_REWARD_CENTS = 100;
+const MIN_REWARD_MULTIPLIER = 0.5;
+const MAX_REWARD_MULTIPLIER = 2;
+const MIN_TIME_MULTIPLIER = 0.5;
+const MAX_TIME_MULTIPLIER = 3;
 
 const MAX_OFFER_COUNT = 8;
 const MAX_MISSION_ROUTE_POINTS = 10;
@@ -35,6 +44,7 @@ export function createCommunityRaceOffer(
   start: LonLat,
   destination: LonLat,
   routePlan: CommunityRoutePlan,
+  maxCheckpoints = 3,
 ): MissionOffer | null {
   const distanceMeters = Math.round(
     routePlan.distanceMeters +
@@ -77,7 +87,7 @@ export function createCommunityRaceOffer(
       location: destination,
     },
     route: samplePoints(route, 24),
-    checkpoints: samplePoints(checkpointPoints, 3),
+    checkpoints: samplePoints(checkpointPoints, maxCheckpoints),
     distanceMeters,
     minimumTimeSeconds: Math.max(10, Math.ceil(routePlan.travelTimeSeconds * 0.45)),
     timeLimitSeconds: Math.max(90, Math.ceil(routePlan.travelTimeSeconds * 2.2 + 45)),
@@ -89,6 +99,7 @@ export function generateMissionOffers(
   elements: readonly OsmElement[],
   location: LonLat,
   nowMs = Date.now(),
+  mods: readonly MissionMod[] = [],
 ): readonly MissionOffer[] {
   const areaKey = tileCellAt(location, ROOM_TILE_ZOOM).key;
   const graph = buildRoadGraph(elements, location, 'vehicle');
@@ -132,7 +143,41 @@ export function generateMissionOffers(
     }
   }
 
+  for (const mod of mods) {
+    for (const mission of mod.missions) {
+      if (offers.length >= MAX_OFFER_COUNT + MAX_MOD_OFFER_COUNT) break;
+      const matching = mission.placeCategories.length
+        ? candidates.filter((place) => mission.placeCategories.includes(place.category))
+        : candidates;
+      const pickup = matching[0];
+      const destination = candidates.find((place) => place.id !== pickup?.id);
+      if (!pickup || !destination) continue;
+      const offer = createOffer(graph, pickup, destination, mission.kind, areaKey, seed, {
+        id: `mod-${mission.id}-${hash(`${seed}:${areaKey}:${mission.id}`)}`,
+        title: mission.title,
+        rewardCents: mission.rewardCents,
+        rewardMultiplierScript: mission.rewardMultiplierScript,
+        timeMultiplier: mission.timeMultiplier,
+        timeLimitMultiplierScript: mission.timeLimitMultiplierScript,
+        source: 'mod',
+        creatorHandle: mod.name,
+      });
+      if (offer && !offers.some((existing) => existing.id === offer.id)) offers.push(offer);
+    }
+  }
+
   return offers;
+}
+
+interface OfferOverrides {
+  readonly id: string;
+  readonly title: string;
+  readonly rewardCents?: number;
+  readonly rewardMultiplierScript?: ModScript | null;
+  readonly timeMultiplier?: number;
+  readonly timeLimitMultiplierScript?: ModScript | null;
+  readonly source?: 'mod';
+  readonly creatorHandle?: string;
 }
 
 function createOffer(
@@ -142,6 +187,7 @@ function createOffer(
   kind: MissionKind,
   areaKey: string,
   seed: string,
+  overrides?: OfferOverrides,
 ): MissionOffer | null {
   const start = nearestRoadNode(graph, pickup.location, ROAD_SNAP_DISTANCE_METERS);
   const end = nearestRoadNode(graph, destination.location, ROAD_SNAP_DISTANCE_METERS);
@@ -154,21 +200,82 @@ function createOffer(
   ) {
     return null;
   }
-  const title = missionTitle(kind, pickup, destination);
+  const scriptContext = {
+    speedMetersPerSecond: 0,
+    damageFraction: 0,
+    distanceMeters: roadRoute.distanceMeters,
+    elapsedSeconds: roadRoute.travelTimeSeconds,
+    completedMissions: 0,
+    placeCategory: destination.category,
+  };
+  const rewardMultiplier = clampMultiplier(
+    runMultiplierScript(overrides?.rewardMultiplierScript, scriptContext),
+    MIN_REWARD_MULTIPLIER,
+    MAX_REWARD_MULTIPLIER,
+  );
+  const timeMultiplier = clampMultiplier(
+    (overrides?.timeMultiplier ?? 1) *
+      runMultiplierScript(overrides?.timeLimitMultiplierScript, scriptContext, 1),
+    MIN_TIME_MULTIPLIER,
+    MAX_TIME_MULTIPLIER,
+  );
+  const baseRewardCents =
+    overrides?.rewardCents ?? Math.round(500 + roadRoute.distanceMeters * 0.4);
   return {
-    id: `mission-${hash(`${seed}:${areaKey}:${kind}:${pickup.id}:${destination.id}`)}`,
+    id:
+      overrides?.id ??
+      `mission-${hash(`${seed}:${areaKey}:${kind}:${pickup.id}:${destination.id}`)}`,
     kind,
-    title,
+    source: overrides?.source,
+    creatorHandle: overrides?.creatorHandle,
+    title: overrides?.title ?? missionTitle(kind, pickup, destination),
     areaKey,
     pickup,
     destination,
     route: samplePoints(roadRoute.points, MAX_MISSION_ROUTE_POINTS),
     checkpoints: createCheckpoints(kind, roadRoute.points),
     distanceMeters: Math.round(roadRoute.distanceMeters),
-    minimumTimeSeconds: Math.max(10, Math.ceil(roadRoute.travelTimeSeconds * 0.45)),
-    timeLimitSeconds: Math.max(90, Math.ceil(roadRoute.travelTimeSeconds * 2.2 + 45)),
-    rewardCents: Math.min(10_000, Math.max(500, Math.round(500 + roadRoute.distanceMeters * 0.4))),
+    minimumTimeSeconds: Math.max(
+      10,
+      Math.ceil(roadRoute.travelTimeSeconds * 0.45 * timeMultiplier),
+    ),
+    timeLimitSeconds: Math.max(
+      90,
+      Math.ceil(roadRoute.travelTimeSeconds * 2.2 * timeMultiplier + 45),
+    ),
+    rewardCents:
+      overrides?.rewardCents === undefined
+        ? Math.min(10_000, Math.max(500, Math.round(baseRewardCents * rewardMultiplier)))
+        : Math.min(
+            10_000,
+            Math.max(MIN_MOD_REWARD_CENTS, Math.round(baseRewardCents * rewardMultiplier)),
+          ),
   };
+}
+
+function runMultiplierScript(
+  script: ModScript | null | undefined,
+  context: {
+    readonly speedMetersPerSecond: number;
+    readonly damageFraction: number;
+    readonly distanceMeters: number;
+    readonly elapsedSeconds: number;
+    readonly completedMissions: number;
+    readonly placeCategory: string;
+  },
+  fallback = 1,
+): number {
+  if (!script) return fallback;
+  try {
+    const result = script(context);
+    return typeof result === 'number' && Number.isFinite(result) ? result : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function clampMultiplier(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function collectPlaces(elements: readonly OsmElement[]): MissionPlace[] {

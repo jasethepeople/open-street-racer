@@ -1116,3 +1116,12 @@ body[data-control-mode='touch'] .controls-help {
 .menu-race-form .menu-button {
   justify-self: start;
 }
+.menu-checkpoint-list {
+  margin: 7px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.menu-race-form .menu-button + .menu-button {
+  justify-self: start;
+  margin-left: 7px;
+}

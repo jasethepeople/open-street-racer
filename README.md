@@ -43,6 +43,7 @@ The map includes visible `© OpenStreetMap contributors` attribution. OpenFreeMa
 - `packages/world` — Web Mercator tile math, local coordinates, road ribbons, lane markings, land/building meshes, and road-aligned spawning.
 - `packages/ui` — read-only HUD rendering and keyboard/touch input sampling.
 - `packages/shared` — shared input/state/map data types, progression records, protocol messages, and network limits.
+  Mods: drop folders with a `manifest.json` under `apps/web/public/mods/` (or a custom `MODS_DIR`) to add vehicles and scripted missions — see [docs/MODDING.md](docs/MODDING.md). Player-made street races are built in-game from the **Build** menu tab and validated server-side.
 
 `pnpm simulate` runs 20 local clients for five seconds. For local play from a phone, keep the phone and computer on the same Wi-Fi and open the Vite network URL printed by `pnpm dev`; only the Vite port needs to be reachable because it proxies WebSocket traffic to the loopback-only server.
 
@@ -67,4 +68,4 @@ OpenFreeMap's public Liberty vector style needs no key. Nominatim is queried onl
 
 ## License and data
 
-The code is licensed under **GNU AGPL-3.0-or-later**; see `LICENSE`. OpenStreetMap data is © OpenStreetMap contributors and is available under the ODbL. MapLibre GL JS is BSD-3-Clause, Three.js is MIT, and Rapier is Apache-2.0. OpenFreeMap and OpenMapTiles attribution remains visible alongside the required OSM credit.
+The code is licensed under **GNU AGPL-3.0-or-later**; see `LICENSE`. OpenStreetMap data is © OpenStreetMap contributors and is available under the ODbL. MapLibre GL JS is BSD-3-Clause, Three.js is MIT, and Rapier is Apache-2.0. OpenFreeMap and OpenMapTiles attribution remains visible alongside the required OSM credit.The code is licensed under **GNU AGPL-3.0-or-later**; see `LICENSE`. OpenStreetMap data is © OpenStreetMap contributors and is available under the ODbL. MapLibre GL JS is BSD-3-Clause, Three.js is MIT, and Rapier is Apache-2.0. OpenFreeMap and OpenMapTiles attribution remains visible alongside the required OSM credit. Full data, library, and asset-licensing details (including the CC0/CC-BY policy for contributed assets) live in `docs/CREDITS.md`.

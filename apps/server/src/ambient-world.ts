@@ -27,6 +27,7 @@ import {
   type RoadGraphNode,
   type TileCell,
 } from '@openstreet-racer/world';
+import type { MissionMod } from './mod-loader';
 import { generateMissionOffers } from './mission-generator';
 
 const REGION_CACHE_LIMIT = 96;
@@ -93,6 +94,7 @@ export interface AmbientWorldService {
     longitude: number;
     latitude: number;
   }): Promise<readonly MissionOffer[]>;
+  setMissionMods?(mods: readonly MissionMod[]): void;
 }
 
 export class AmbientWorld implements AmbientWorldService {
@@ -101,10 +103,16 @@ export class AmbientWorld implements AmbientWorldService {
   private readonly areaLoads = new Map<string, Promise<void>>();
   private readonly failures = new Map<string, CellFailure>();
 
+  private missionMods: readonly MissionMod[] = [];
+
   constructor(
     private readonly source: RegionDataSource,
     private readonly now: () => number = Date.now,
   ) {}
+
+  setMissionMods(mods: readonly MissionMod[]): void {
+    this.missionMods = mods;
+  }
 
   async prepare(location: { longitude: number; latitude: number }): Promise<void> {
     const center = tileCellAt(location, ROOM_TILE_ZOOM);
@@ -195,7 +203,7 @@ export class AmbientWorld implements AmbientWorldService {
   }): Promise<readonly MissionOffer[]> {
     const center = tileCellAt(location, ROOM_TILE_ZOOM);
     const elements = await this.source.loadRegion(center, INTEREST_RADIUS_CELLS);
-    return generateMissionOffers(elements, location, this.now());
+    return generateMissionOffers(elements, location, this.now(), this.missionMods);
   }
 
   private async loadNeighborhood(center: TileCell): Promise<void> {

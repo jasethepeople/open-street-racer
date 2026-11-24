@@ -7,6 +7,7 @@ import { haversineMeters } from '@openstreet-racer/world';
 
 const STORE_VERSION = 1;
 const MAX_STORED_RACES = 500;
+const MAX_STORED_CHECKPOINTS = 6;
 const MAX_RACES_PER_QUERY = 24;
 const DEFAULT_DIRECTORY = fileURLToPath(
   new URL('../../../.data/openstreet-racer', import.meta.url),
@@ -116,7 +117,7 @@ function isCommunityRace(value: unknown): value is MissionOffer {
     !value.route.every(isLonLat) ||
     !Array.isArray(value.checkpoints) ||
     value.checkpoints.length < 1 ||
-    value.checkpoints.length > 3 ||
+    value.checkpoints.length > MAX_STORED_CHECKPOINTS ||
     !value.checkpoints.every(isLonLat) ||
     !isBoundedNumber(value.distanceMeters, 300, MAX_ROUTE_DISTANCE_METERS) ||
     !isBoundedNumber(value.minimumTimeSeconds, 2, 600) ||

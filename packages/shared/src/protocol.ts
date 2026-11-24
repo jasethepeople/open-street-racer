@@ -36,6 +36,8 @@ export const MAX_ROUTE_DISTANCE_METERS = 7_000;
 export const MAX_ROUTE_POINTS = 256;
 export const ROUTE_WINDOW_MS = 60_000;
 export const ROUTES_PER_WINDOW = 2;
+export const MAX_RACE_WAYPOINTS = 5;
+export const MIN_RACE_LEG_METERS = 100;
 
 export interface NetworkCarState {
   readonly vehicleId?: string;
@@ -153,6 +155,7 @@ export type ClientMessage =
       readonly type: 'race-create';
       readonly title: string;
       readonly destination: Readonly<LonLat>;
+      readonly waypoints?: readonly Readonly<LonLat>[];
     };
 
 export type ServerMessage =

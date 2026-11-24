@@ -147,9 +147,11 @@
 ### Phase 6: Community and modding
 
 - [x] Vehicle mods: drop a folder with a `manifest.json` under the served `mods/` directory and its vehicles join the garage catalog (server and browser loaders validate ID prefixes, sizes, and folder-name match)
-- [ ] Mod API (missions, scripts) with sandboxed scripting
-- [ ] In-game mission editor
-- [ ] Docs, tutorials, contributor roadmap, translations
+- [x] Mod API: mission mods (kind, reward, time multiplier, OSM place categories) with sandboxed rule scripts evaluated by a purpose-built Lisp-style interpreter — hard step/depth caps, no host objects reachable, identical behavior in browser and server
+- [x] In-game race builder: drive to spots and drop up to five checkpoints from the Build menu tab; the server routes each leg with A*, bounds the course, and publishes it for nearby players
+- [x] Docs: `docs/MODDING.md` (format, script language reference, sandbox evaluation, tutorial), sample mission mod, contributor roadmap, and translation guide in `CONTRIBUTING.md`
+
+**Status:** Mission mods load from the same folder layout as vehicle mods; rules run in `packages/game/src/mod-script.ts` (a ~380-line interpreter with 4,000-step, depth-48, 512-character caps and no loops, closures, or property access), so scripts cannot reach the network, storage, or the DOM by construction, and the server clamps every script result before use. The Build tab drops checkpoints at the car's position and publishes waypoint courses through the existing validated race pipeline. A combined sample mod (`apps/web/public/mods/sample-rally/`) ships one vehicle plus two scripted missions, and every published race still lands on the same server-side leaderboard as in Phase 5. Translation is a documented two-language string table awaiting a third column.
 
 ---
 
@@ -189,5 +191,6 @@ The core loop is in: real 3D OSM streets, traffic and pedestrians, missions that
 
 1. **Real-device verification.** Confirm 60 FPS and hitch-free chunk streaming on a physical mid-range phone; the available browser only offers SwiftShader software rendering.
 2. **Production hardening before public play.** Move player profiles and community races from single-process JSON files to a transactional shared database, switch the OSM source to a production-grade one (the current Overpass usage is fine for development but unsuitable for a busy public server), deploy behind HTTPS/WSS, and set `ALLOWED_ORIGINS`.
-3. **Deeper community content.** Player-placed props and ramps, vote-based moderation over published races, and mission/script mods with sandboxing.
+3. **Deeper community content.** Player-placed props and ramps, and vote-based moderation (report + hide-by-default + admin tools) over published races. Mission and script mods exist; more script hooks (custom objective logic, per-mission rules) are the natural extension.
 4. **Federation.** Implement the directory service sketched in `docs/FEDERATION.md`, starting with an in-game server URL field (today only the build-time `VITE_MULTIPLAYER_URL` override exists) and a reconnect flow.
+5. **Third language.** The menu string table is translation-ready; add a real third locale to prove the flow documented in CONTRIBUTING.md.

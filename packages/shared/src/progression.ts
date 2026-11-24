@@ -11,7 +11,7 @@ export interface MissionPlace {
 
 export interface MissionOffer {
   readonly id: string;
-  readonly source?: 'community';
+  readonly source?: 'community' | 'mod';
   readonly creatorHandle?: string;
   readonly kind: MissionKind;
   readonly title: string;
